@@ -3,7 +3,8 @@ from flask import Flask
 import os 
 from src.auth import auth
 from src.database import db
-from src.mail import mail
+from src.services.mail import mail
+from src.services.jwt import jwt
 from flask_jwt_extended import JWTManager
 from flask_mail import Mail
 def create_app(test_config=None):
@@ -22,7 +23,8 @@ def create_app(test_config=None):
             MAIL_USERNAME=os.environ.get("MAIL_USERNAME"),
             MAIL_PASSWORD=os.environ.get("MAIL_PASSWORD"),
             MAIL_USE_TLS=False,
-            MAIL_USE_SSL=True
+            MAIL_USE_SSL=True,
+            SECURITY_PASSWORD_SALT = os.environ.get("SECURITY_PASSWORD_SALT")
         )
     else:
         app.config.from_mapping(test_config)
@@ -30,7 +32,8 @@ def create_app(test_config=None):
     db.app = app
     db.init_app(app)
     mail.init_app(app)
-    JWTManager(app)
+    # jwt = JWTManager(app)
+    jwt.init_app(app)
 
     app.register_blueprint(auth)
     return app

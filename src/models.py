@@ -10,7 +10,13 @@ class UserModel(BaseModel):
     email: str 
     password: str
     access: Optional[int]
-
+    public_id: Optional[str]
+    address_state: Optional[str]
+    address_city: Optional[str]
+    address_zip: Optional[str]
+    address_country: Optional[str]
+    address_unit: Optional[str]
+    address_street: Optional[str]
 class UserLoginModel(BaseModel):
     email: str
     password: str

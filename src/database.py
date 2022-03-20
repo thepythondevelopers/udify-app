@@ -20,21 +20,21 @@ class Accounts(db.Model):
     address_country = db.Column(db.String(255))
     users = db.relationship("User", backref = 'accounts')
 
-    def __init__(self,accid):
+    def __init__(self,accid,**kwargs):
         self.guid       = accid
         self.created_at = dt.now()
         api_uuid = uuid.uuid4()
         api_uuid = str(api_uuid)
         api_uuid = api_uuid.replace("-","")
         self.api_token          = api_uuid
-        self.name               = "TEST"
-        self.public_id          = "TEST" #!?
-        self.address_state      = "CA"
-        self.address_city       = "CA"
-        self.address_zip        = "123456"
-        self.address_country    = "US"
-        self.address_unit       = "US"
-        self.address_street     = "CA-1"
+        self.name               = kwargs.get('name', "TEST")
+        self.public_id          = kwargs.get('public_id', "TEST")
+        self.address_state      = kwargs.get('address_state',"CA")
+        self.address_city       = kwargs.get("address_city","CA")
+        self.address_zip        = kwargs.get("address_zip","123456")
+        self.address_country    = kwargs.get("address_country", "US")
+        self.address_unit       = kwargs.get("address_unit", "US")
+        self.address_street     = kwargs.get("address_street", "STREET-1")
 
 class User(db.Model):
     __tablename__ = "users"
@@ -45,6 +45,7 @@ class User(db.Model):
     password    = db.Column(db.Text)
     created_at  = db.Column(db.DateTime)
     account_id  = db.Column(db.String(32), db.ForeignKey('accounts.guid'))
+    onboarding  = db.Column(db.Integer)
     password_reset_token = db.Column(db.String(32))
 
     def __init__(self,first_name,last_name,account_id,email,password):
@@ -58,20 +59,34 @@ class User(db.Model):
         self.email      = email 
         self.password   = password
         self.created_at = dt.now()
+        self.onboarding = 0
     
-    # def get_token(self, expires_sec=300):
-    #     serial = Serializer(os.environ.get("SECRET_KEY"),expires_in=expires_sec)
-    #     return serial.dumps({'user_id':self.guid}).decode('utf-8')
-    
-    # @staticmethod
-    # def verify_token(token):
-    #     serial = Serializer(os.environ.get("SECRET_KEY"))
-    #     try:
-    #         user_id = serial.loads(token)['user_id']
-    #     except Exception as error:
-    #         return None
-    #     return User.query.get(user_id)
-
-
     def __repr__(self) -> str:
         return f"{self.guid} - {self.first_name}"
+
+# To store the blocklisted tokens, so that access from those tokens is prevented
+class UserTokens(db.Model):
+    __tablename__ = "user_tokens"
+    guid              = db.Column(db.String(32), primary_key = True)
+    access_jti        = db.Column(db.String(36))
+    refresh_jti       = db.Column(db.String(36))    
+    created_at        = db.Column(db.DateTime)
+    updated_at        = db.Column(db.DateTime)
+    user_id           = db.Column(db.String(32))
+    status            = db.Column(db.Boolean)
+
+    def __init__(self,access_jti,refresh_jti,user_id):
+        guid = uuid.uuid4()
+        guid = str(guid)
+        # self.guid = guid 
+        guid = guid.replace("-","")
+        self.guid        = guid
+        self.access_jti  = access_jti
+        self.refresh_jti = refresh_jti
+        self.user_id     = user_id
+        self.status      = True
+        self.created_at  = dt.now()
+    
+    def __repr__(self) -> str: 
+        return f"{self.guid} - {self.access_jti}"
+    
