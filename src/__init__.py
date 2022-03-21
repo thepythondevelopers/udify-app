@@ -7,6 +7,7 @@ from src.services.mail import mail
 from src.services.jwt import jwt
 from flask_jwt_extended import JWTManager
 from flask_mail import Mail
+
 def create_app(test_config=None):
     
     app = Flask(__name__,instance_relative_config=True)
@@ -37,3 +38,4 @@ def create_app(test_config=None):
 
     app.register_blueprint(auth)
     return app
+    

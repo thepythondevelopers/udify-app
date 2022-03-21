@@ -1,3 +1,4 @@
+# This service is being used to create and verify the email confirmation tokens being sent via mail
 from itsdangerous import URLSafeTimedSerializer
 from flask import current_app
 
