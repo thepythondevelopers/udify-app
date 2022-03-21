@@ -64,7 +64,7 @@ class User(db.Model):
     def __repr__(self) -> str:
         return f"{self.guid} - {self.first_name}"
 
-# To store the blocklisted tokens, so that access from those tokens is prevented
+# To store the blacklisted tokens, so that access from those tokens is prevented
 class UserTokens(db.Model):
     __tablename__ = "user_tokens"
     guid              = db.Column(db.String(32), primary_key = True)

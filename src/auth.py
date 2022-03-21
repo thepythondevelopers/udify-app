@@ -1,5 +1,6 @@
 import json
 from os import access
+import traceback
 from flask import Blueprint, jsonify, request, redirect,url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 import validators
@@ -145,15 +146,23 @@ def check_if_token_revoked(jwt_header, jwt_payload):
     type = jwt_payload["type"]
     if(type != 'refresh'):
         token = db.session.query(UserTokens).filter_by(access_jti=jti).first()
-        print(token)
-        if(token.status == 0):
-            return True 
-        elif token.status == 1: 
-            return False
+        if(token):
+            print(token)
+            if(token.status == 0):
+                return True 
+            elif token.status == 1: 
+                return False
+        else: 
+            return True
     elif(type == 'refresh'):
-        # token = db.session.query(UserTokens).filter_by(refres)
-        return False
-
+        token = db.session.query(UserTokens).filter_by(refresh_jti=jti).first()
+        if(token):
+            if(token.status == 0):
+                return True
+            elif token.status == 1:
+                return False
+        else:
+            return True
     # return token is not None
 # Marking the token as revoked after the session is logged out, forcing the user to login again
 @auth.delete("/logout")
@@ -163,15 +172,16 @@ def logout():
         jti = get_jwt()['jti']
         user_id = get_jwt_identity()
         token = db.session.query(UserTokens).filter_by(user_id=user_id,access_jti=jti).first()
+        print(f"UserToken:{token}")
+        refresh_jti = token.refresh_jti
         if token:
-            if(token.status == 0):
-                return jsonify({
-                    'message': 'Token already revoked'
-                }), HTTP_409_CONFLICT
-            else:
-                token.status = 0
-                db.session.add(token)
-                db.session.commit()
+            # revoke all tokens associated with this refresh token
+            db.session.query(UserTokens).filter_by(user_id=user_id,refresh_jti=refresh_jti).update({UserTokens.status:0,UserTokens.updated_at:dt.now()},synchronize_session = False)
+            db.session.commit()
+            return jsonify({
+                'message': 'Token Revoked'
+            }), HTTP_200_OK
+
                 
         else:
             return jsonify({
