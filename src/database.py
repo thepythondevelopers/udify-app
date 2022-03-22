@@ -2,7 +2,14 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime as dt
 import uuid 
 import os
+import enum 
 
+class AccessGroup(enum.Enum):
+    USER = "user"
+    OWNER = "owner"
+    ADMIN  = "admin"
+    RETAILER = "retailer"
+    SUPPLIER = "supplier"
 
 db = SQLAlchemy()
 class Accounts(db.Model):
@@ -47,8 +54,9 @@ class User(db.Model):
     account_id  = db.Column(db.String(32), db.ForeignKey('accounts.guid'))
     onboarding  = db.Column(db.Integer)
     password_reset_token = db.Column(db.String(32))
+    access_group =  db.Column(db.Enum("user","owner","retailer","supplier","admin"))
 
-    def __init__(self,first_name,last_name,account_id,email,password):
+    def __init__(self,first_name,last_name,account_id,email,password,access_group=AccessGroup.USER.value):
         user_id = uuid.uuid4()
         user_id = str(user_id)
         user_id = user_id.replace("-","")
@@ -60,7 +68,26 @@ class User(db.Model):
         self.password   = password
         self.created_at = dt.now()
         self.onboarding = 0
+        self.access_group     = access_group
     
+    def is_admin(self):
+        return self.access_group == AccessGroup.ADMIN.value
+    
+    def is_owner(self):
+        return self.access_group == AccessGroup.OWNER.value
+    
+    def allowed(self, access_group):
+        # better change structure of enum in db 
+        access_level = {
+            "user":0,
+            "supplier":1,
+            "retailer":2,
+            "admin":3,
+            "owner":4
+
+        }
+        return access_level[self.access_group] >=  access_level[access_group]
+
     def __repr__(self) -> str:
         return f"{self.guid} - {self.first_name}"
 

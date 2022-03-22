@@ -5,7 +5,7 @@ from flask import Blueprint, jsonify, request, redirect,url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 import validators
 from datetime import datetime as dt
-from src.constants.http_status_codes import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
+from src.constants.http_status_codes import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 from src.database import User as User, UserTokens
 from src.database import Accounts as Accounts
 from src.database import UserTokens as UserTokens
@@ -20,8 +20,28 @@ from src.services.jwt import jwt
 from src.services.token import confirm_email_confirmation_token,generate_email_confirmation_token 
 import random 
 import string
+from functools import wraps
 
 auth = Blueprint("auth",__name__,url_prefix="/api/v1/auth")
+
+# decorater for access_level
+def restricted(access_group):
+    def decorator(func):
+        @wraps(func)
+        def wrapper_function(*args,**kwargs):
+            print(access_group)
+            user = get_jwt_identity()
+            user = User.query.filter_by(guid=user).first()
+            if(user.allowed(access_group)):
+                return func(*args,**kwargs)
+            else:
+                return jsonify({
+                    'error': 'Not enough permissions!'
+                }),HTTP_403_FORBIDDEN
+        return wrapper_function
+    return decorator
+    
+
 
 @auth.post('/signup')
 @validate()
@@ -110,6 +130,7 @@ def login(body: UserLoginModel):
 
 @auth.get("/current_user")
 @jwt_required()
+@restricted("admin")
 def current_user():
     user = get_jwt_identity()
     user = User.query.filter_by(guid=user).first()
