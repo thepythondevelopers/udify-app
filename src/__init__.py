@@ -3,8 +3,8 @@ from flask import Flask
 import os 
 from src.auth import auth
 from src.database import db
-from src.services.mail import mail
-from src.services.jwt import jwt
+from src.util.mail import mail
+from src.util.jwt import jwt
 from flask_jwt_extended import JWTManager
 from flask_mail import Mail
 

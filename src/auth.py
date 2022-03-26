@@ -15,9 +15,9 @@ from flask_jwt_extended import jwt_required, create_access_token, create_refresh
 from src.models import UserModel,UserLoginModel, UserResetPasswordModel, UserSetPasswordModel
 from flask_pydantic import validate
 from flask_mail import Message
-from src.services.mail import mail
-from src.services.jwt import jwt
-from src.services.token import confirm_email_confirmation_token,generate_email_confirmation_token 
+from src.util.mail import mail
+from src.util.jwt import jwt
+from src.util.token import confirm_email_confirmation_token,generate_email_confirmation_token 
 import random 
 import string
 from functools import wraps
