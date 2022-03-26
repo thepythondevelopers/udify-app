@@ -1,25 +1,29 @@
 import json
-from os import access
+from os import abort, access
 import traceback
 from flask import Blueprint, jsonify, request, redirect,url_for
+from flask import current_app
+from itsdangerous import base64_decode
 from werkzeug.security import check_password_hash, generate_password_hash
 import validators
-from datetime import datetime as dt
+from flask_jwt_extended import jwt_required, create_access_token, create_refresh_token,get_jwt_identity, get_jwt, decode_token
+from datetime import datetime as dt, timedelta,timezone
 from src.constants.http_status_codes import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 from src.database import User as User, UserTokens
 from src.database import Accounts as Accounts
 from src.database import UserTokens as UserTokens
 from src.database import db
 import uuid
-from flask_jwt_extended import jwt_required, create_access_token, create_refresh_token,get_jwt_identity, get_jwt, decode_token
 from src.models import UserModel,UserLoginModel, UserResetPasswordModel, UserSetPasswordModel
 from flask_pydantic import validate
 from flask_mail import Message
 from src.util.mail import mail
-from src.util.jwt import jwt
+# from src.util.jwt import jwt
+from src.util.cache import cache
 from src.util.token import confirm_email_confirmation_token,generate_email_confirmation_token 
 import random 
 import string
+import jwt
 from functools import wraps
 
 auth = Blueprint("auth",__name__,url_prefix="/api/v1/auth")
@@ -40,13 +44,59 @@ def restricted(access_group):
                 }),HTTP_403_FORBIDDEN
         return wrapper_function
     return decorator
-    
 
+def is_jwt_authorized(jwt_access_token):
+    '''
+
+    To check if the jwt shared is authorized or not
+    @params: a jwt access token 
+    @returns: True if valid token is valid
+
+    '''
+    jwt_access_token = jwt_access_token.split(" ")
+    if(len(jwt_access_token) != 2):
+        print("Incorrect Format")
+        return False
+    if(jwt_access_token[0] != "Bearer"):
+        print("Not a Bearer Token")
+        return False
+    # get the actual jwt
+    jwt_access_token = jwt_access_token[1]
+    print(f"Token: {jwt_access_token}")
+    token_header = jwt_access_token.split(".")[0]
+    token_content = jwt_access_token.split(".")[1]
+    token_signature = jwt_access_token.split(".")[2]
+    token_header =json.loads(base64_decode(token_header))
+    print(token_header)
+    
+    # prevent unsigned tokens
+    if(token_header['alg'] == "none"):
+        return False
+    try: 
+        decoded = jwt.decode(jwt_access_token,key="adasdsadsasjnsgjsdng",algorithms="HS256")
+    except Exception as error: 
+        print(error)
+        return False
+    return True    
+
+def is_jwt_valid(jwt_access_token):
+    
+    '''
+    Checks whether this token has been created from an invalid token or not
+    @params: jwt_access_token
+    @returns: true if valid token
+
+    '''
+    jwt_payload = jwt.decode(jwt_access_token,key="adasdsadsasjnsgjsdng",algorithms="HS256")
+    user_id = jwt_payload["user_id"]
+    exp = jwt_payload["exp"]
+    print("Time before which invalid" + str(cache.get(user_id)))
+    print(dt.fromtimestamp(exp))
+    return cache.get(user_id) == None or cache.get(user_id) < dt.fromtimestamp(exp,tz=timezone.utc) 
 
 @auth.post('/signup')
 @validate()
 def signup(body: UserModel):
-    
     # data = request.json
     first_name = body.first_name
     last_name  = body.last_name
@@ -108,13 +158,12 @@ def login(body: UserLoginModel):
     if user: 
         is_pass_correct = check_password_hash(user.password,password)
         if is_pass_correct:
-            refresh_token = create_refresh_token(identity=user.guid)
-            access_token  = create_access_token(identity=user.guid)
-            access_jti = decode_token(access_token)['jti']
-            refresh_jti = decode_token(refresh_token)['jti']
-            new_token = UserTokens(access_jti,refresh_jti,user.guid)
-            db.session.add(new_token)
-            db.session.commit()
+            access_expiry_value = dt.now(timezone.utc) + timedelta(minutes=15)
+            refresh_expiry_value = dt.now(timezone.utc) + timedelta(days=1)
+            # create_access_token
+            access_token = jwt.encode({'exp':access_expiry_value,'user_id':user.guid,'role':user.access_group},key="adasdsadsasjnsgjsdng",algorithm="HS256")
+            print(f"Access Token expiry date: {str(access_expiry_value)}")
+            refresh_token = jwt.encode({'exp':refresh_expiry_value,'user_id': user.guid},key="adasdsadsasjnsgjsdng",algorithm="HS256")
             return jsonify({
                 'user':{
                     'refresh_token': refresh_token,
@@ -127,13 +176,22 @@ def login(body: UserLoginModel):
         "error": "Wrong credentials"
     }), HTTP_401_UNAUTHORIZED
 
-
 @auth.get("/current_user")
-@jwt_required()
-@restricted("admin")
+# @restricted("admin")
 def current_user():
-    user = get_jwt_identity()
-    user = User.query.filter_by(guid=user).first()
+    
+    if(is_jwt_authorized(request.headers.get('Authorization')) == False):
+        return jsonify({
+            "error":"Invalid Token"
+        }), HTTP_401_UNAUTHORIZED
+    
+    if(is_jwt_valid(request.headers.get('Authorization').split(" ")[1]) ==  False):
+        return jsonify({
+            "error": "Invalid Token"
+        }), HTTP_401_UNAUTHORIZED
+    
+    user_id = jwt.decode(request.headers.get('Authorization').split(' ')[1],key="adasdsadsasjnsgjsdng",algorithms="HS256")['user_id']
+    user = User.query.filter_by(guid=user_id).first()
     # return {"user":"protected information"}
     return jsonify({
         "user": {
@@ -142,7 +200,6 @@ def current_user():
     }), HTTP_200_OK
 
 @auth.get("/token/refresh")
-@jwt_required(refresh=True)
 def get_refresh_token():
     identity = get_jwt_identity()
     access = create_access_token(identity=identity)
@@ -157,68 +214,31 @@ def get_refresh_token():
         'access_token': access,
     }), HTTP_200_OK
 
-
-# token_in_blocklist_loader decorater called everytime to check if the token provided is blacklisted or not
-@jwt.token_in_blocklist_loader
-def check_if_token_revoked(jwt_header, jwt_payload):
-    print(jwt_header)
-    print(jwt_payload)
-    jti = jwt_payload["jti"]
-    type = jwt_payload["type"]
-    if(type != 'refresh'):
-        token = db.session.query(UserTokens).filter_by(access_jti=jti).first()
-        if(token):
-            print(token)
-            if(token.status == 0):
-                return True 
-            elif token.status == 1: 
-                return False
-        else: 
-            return True
-    elif(type == 'refresh'):
-        token = db.session.query(UserTokens).filter_by(refresh_jti=jti).first()
-        if(token):
-            if(token.status == 0):
-                return True
-            elif token.status == 1:
-                return False
-        else:
-            return True
-    # return token is not None
 # Marking the token as revoked after the session is logged out, forcing the user to login again
 @auth.delete("/logout")
-@jwt_required()
 def logout():
-    try:
-        jti = get_jwt()['jti']
-        user_id = get_jwt_identity()
-        token = db.session.query(UserTokens).filter_by(user_id=user_id,access_jti=jti).first()
-        print(f"UserToken:{token}")
-        refresh_jti = token.refresh_jti
-        if token:
-            # revoke all tokens associated with this refresh token
-            db.session.query(UserTokens).filter_by(user_id=user_id,refresh_jti=refresh_jti).update({UserTokens.status:0,UserTokens.updated_at:dt.now()},synchronize_session = False)
-            db.session.commit()
-            return jsonify({
-                'message': 'Token Revoked'
-            }), HTTP_200_OK
 
-                
-        else:
-            return jsonify({
-                'error': 'Token not found'
-            }), HTTP_404_NOT_FOUND
-
-        # db.session.add(UserTokens(jti=jti,user_id=user_id))
-        # db.session.commit()
+    access_token = request.headers.get('Authorization')
+    if(is_jwt_authorized(request.headers.get('Authorization')) == False):
         return jsonify({
-            'message': 'Token Revoked'
-        }), HTTP_200_OK
-    except Exception as error:
-        print(error)
+            'error':'Invalid Token'
+        }), HTTP_403_FORBIDDEN
+    if(is_jwt_valid(request.headers.get('Authorization').split(" ")[1]) == False):
         return jsonify({
-            'error': 'Error in revoking the token'
-        }),HTTP_400_BAD_REQUEST
+            'error': 'Invalid Token'
+        }), HTTP_403_FORBIDDEN
+    
+    jwt_payload = jwt.decode(access_token.split(" ")[1],key="adasdsadsasjnsgjsdng",algorithms="HS256")
+    exp_time = jwt_payload['exp']
+    print(exp_time)
+    print(type(exp_time))
+    jwt_exp_time = dt.now(timezone.utc) + timedelta(minutes=15)
+    print(jwt_exp_time)
+    cache.set(jwt_payload['user_id'],jwt_exp_time)
+    print(cache.get(jwt_payload['user_id']))
+    return jsonify({
+        'msg':f"User {jwt_payload['user_id']} logged out"
+    }), HTTP_200_OK
 
 
 def send_mail():
