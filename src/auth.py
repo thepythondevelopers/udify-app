@@ -73,7 +73,7 @@ def is_jwt_authorized(jwt_access_token):
     if(token_header['alg'] == "none"):
         return False
     try: 
-        decoded = jwt.decode(jwt_access_token,key="adasdsadsasjnsgjsdng",algorithms="HS256")
+        decoded = jwt.decode(jwt_access_token,key=current_app.config["SECRET_KEY"],algorithms="HS256")
     except Exception as error: 
         print(error)
         return False
@@ -87,7 +87,7 @@ def is_jwt_valid(jwt_access_token):
     @returns: true if valid token
 
     '''
-    jwt_payload = jwt.decode(jwt_access_token,key="adasdsadsasjnsgjsdng",algorithms="HS256")
+    jwt_payload = jwt.decode(jwt_access_token,key=current_app.config["SECRET_KEY"],algorithms="HS256")
     user_id = jwt_payload["user_id"]
     exp = jwt_payload["exp"]
     print("Time before which invalid" + str(cache.get(user_id)))
@@ -161,9 +161,9 @@ def login(body: UserLoginModel):
             access_expiry_value = dt.now(timezone.utc) + timedelta(minutes=15)
             refresh_expiry_value = dt.now(timezone.utc) + timedelta(days=1)
             # create_access_token
-            access_token = jwt.encode({'exp':access_expiry_value,'user_id':user.guid,'role':user.access_group},key="adasdsadsasjnsgjsdng",algorithm="HS256")
+            access_token = jwt.encode({'exp':access_expiry_value,'user_id':user.guid,'role':user.access_group},key=current_app.config["SECRET_KEY"],algorithm="HS256")
             print(f"Access Token expiry date: {str(access_expiry_value)}")
-            refresh_token = jwt.encode({'exp':refresh_expiry_value,'user_id': user.guid},key="adasdsadsasjnsgjsdng",algorithm="HS256")
+            refresh_token = jwt.encode({'exp':refresh_expiry_value,'user_id': user.guid},key=current_app.config["SECRET_KEY"],algorithm="HS256")
             return jsonify({
                 'user':{
                     'refresh_token': refresh_token,
@@ -190,7 +190,7 @@ def current_user():
             "error": "Invalid Token"
         }), HTTP_401_UNAUTHORIZED
     
-    user_id = jwt.decode(request.headers.get('Authorization').split(' ')[1],key="adasdsadsasjnsgjsdng",algorithms="HS256")['user_id']
+    user_id = jwt.decode(request.headers.get('Authorization').split(' ')[1],key=current_app.config["SECRET_KEY"],algorithms="HS256")['user_id']
     user = User.query.filter_by(guid=user_id).first()
     # return {"user":"protected information"}
     return jsonify({
@@ -228,7 +228,7 @@ def logout():
             'error': 'Invalid Token'
         }), HTTP_403_FORBIDDEN
     
-    jwt_payload = jwt.decode(access_token.split(" ")[1],key="adasdsadsasjnsgjsdng",algorithms="HS256")
+    jwt_payload = jwt.decode(access_token.split(" ")[1],key=current_app.config["SECRET_KEY"],algorithms="HS256")
     exp_time = jwt_payload['exp']
     print(exp_time)
     print(type(exp_time))
