@@ -1,5 +1,3 @@
-from audioop import cross
-from crypt import methods
 import json
 from os import access
 import traceback
