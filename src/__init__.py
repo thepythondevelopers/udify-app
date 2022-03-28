@@ -37,7 +37,8 @@ def create_app(test_config=None):
     mail.init_app(app)
     # jwt = JWTManager(app)
     jwt.init_app(app)
-    cors.init_app(app)
+    # cors.init_app(app,resources={r'/*': {'origins': '*'}})
+    cors.init_app(app, resources={r"*": {"origins": "*"}})
 
     app.register_blueprint(auth)
     return app

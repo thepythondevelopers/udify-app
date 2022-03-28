@@ -22,9 +22,12 @@ import random
 import string
 from functools import wraps
 from flask_cors import cross_origin
+from flask import current_app
+from flask_cors import CORS,cross_origin
 
+# cors = CORS(current_app,resources={r"/*": {"origins": "*"}})
 auth = Blueprint("auth",__name__,url_prefix="/api/v1/auth")
-
+# CORS(auth)
 # decorater for access_level
 def restricted(access_group):
     def decorator(func):
@@ -117,10 +120,15 @@ def signup(body: UserModel):
         }
     }), HTTP_201_CREATED
 
-@auth.route("/login",methods=["POST","OPTIONS"])
+@auth.post("/login")
 @validate()
-@cross_origin(origin="*")
+# @cross_origin()
 def login(body: UserLoginModel):
+    print("recieved")
+    # if(request.method == "OPTIONS"):
+        # return headers
+    # header = response.headers
+    # header['Access-Control-Allow-Origin'] = '*'
     email = body.email
     password = body.password
 
@@ -324,8 +332,15 @@ def confirm_email(email_confirmation_token:str):
             return jsonify({
                 'message': 'Email confirmed!'
             }), HTTP_200_OK
-@auth.after_request
-def after_request(response):
-    header = response.headers
-    header['Access-Control-Allow-Origin'] = '*'
-    return response
+# @auth.after_request
+# def after_request(response):
+#     header = response.headers
+#     print(header)
+#     response.headers.add('Access-Control-Allow-Origin', '*')
+#     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+#     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+
+
+#     print(header)
+#     print(response)
+#     return response
