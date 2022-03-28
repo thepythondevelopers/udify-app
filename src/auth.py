@@ -21,6 +21,7 @@ from src.services.token import confirm_email_confirmation_token,generate_email_c
 import random 
 import string
 from functools import wraps
+from flask_cors import cross_origin
 
 auth = Blueprint("auth",__name__,url_prefix="/api/v1/auth")
 
@@ -45,6 +46,7 @@ def restricted(access_group):
 
 @auth.post('/signup')
 @validate()
+@cross_origin()
 def signup(body: UserModel):
     
     # data = request.json
@@ -99,6 +101,7 @@ def signup(body: UserModel):
 
 @auth.post("/login")
 @validate()
+@cross_origin()
 def login(body: UserLoginModel):
     email = body.email
     password = body.password
@@ -130,8 +133,10 @@ def login(body: UserLoginModel):
 
 @auth.get("/current_user")
 @jwt_required()
+@cross_origin()
 @restricted("admin")
 def current_user():
+
     user = get_jwt_identity()
     user = User.query.filter_by(guid=user).first()
     # return {"user":"protected information"}
@@ -143,6 +148,7 @@ def current_user():
 
 @auth.get("/token/refresh")
 @jwt_required(refresh=True)
+@cross_origin()
 def get_refresh_token():
     identity = get_jwt_identity()
     access = create_access_token(identity=identity)
@@ -160,6 +166,7 @@ def get_refresh_token():
 
 # token_in_blocklist_loader decorater called everytime to check if the token provided is blacklisted or not
 @jwt.token_in_blocklist_loader
+# @cross_origin()
 def check_if_token_revoked(jwt_header, jwt_payload):
     print(jwt_header)
     print(jwt_payload)
@@ -188,6 +195,7 @@ def check_if_token_revoked(jwt_header, jwt_payload):
 # Marking the token as revoked after the session is logged out, forcing the user to login again
 @auth.delete("/logout")
 @jwt_required()
+@cross_origin()
 def logout():
     try:
         jti = get_jwt()['jti']
@@ -225,6 +233,7 @@ def send_mail():
     pass
 @auth.post("/reset_password")
 @validate()
+@cross_origin()
 def reset_password(body: UserResetPasswordModel):
     email = body.email
     user = User.query.filter_by(email=email).first()
@@ -246,6 +255,7 @@ def reset_password(body: UserResetPasswordModel):
 
 @auth.post("/<string:password_reset_token>")
 @validate()
+@cross_origin()
 def password_reset_token(body: UserSetPasswordModel,password_reset_token:str):
     user = User.query.filter_by(password_reset_token=password_reset_token).first()
     if user: 
@@ -272,6 +282,7 @@ def password_reset_token(body: UserSetPasswordModel,password_reset_token:str):
 
 @auth.get("/confirm/<string:email_confirmation_token>")
 @validate()
+@cross_origin()
 def confirm_email(email_confirmation_token:str):
     try: 
         email = confirm_email_confirmation_token(email_confirmation_token)

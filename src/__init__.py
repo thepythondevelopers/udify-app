@@ -7,6 +7,7 @@ from src.services.mail import mail
 from src.services.jwt import jwt
 from flask_jwt_extended import JWTManager
 from flask_mail import Mail
+from src.services.cors import cors
 
 def create_app(test_config=None):
     
@@ -25,7 +26,8 @@ def create_app(test_config=None):
             MAIL_PASSWORD=os.environ.get("MAIL_PASSWORD"),
             MAIL_USE_TLS=False,
             MAIL_USE_SSL=True,
-            SECURITY_PASSWORD_SALT = os.environ.get("SECURITY_PASSWORD_SALT")
+            SECURITY_PASSWORD_SALT = os.environ.get("SECURITY_PASSWORD_SALT"),
+            CORS_HEADERS='Content-Type'
         )
     else:
         app.config.from_mapping(test_config)
@@ -35,6 +37,7 @@ def create_app(test_config=None):
     mail.init_app(app)
     # jwt = JWTManager(app)
     jwt.init_app(app)
+    cors.init_app(app)
 
     app.register_blueprint(auth)
     return app
