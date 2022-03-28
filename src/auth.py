@@ -1,3 +1,5 @@
+from audioop import cross
+from crypt import methods
 import json
 from os import access
 import traceback
@@ -42,11 +44,29 @@ def restricted(access_group):
         return wrapper_function
     return decorator
     
+# get user details
+# @auth.get('/users')
+# @validate()
+# @cross_origin()
+# def get_users():
+#     user_id = request.args.get('user_id')
+#     if(user_id):
+#         user=User.query.filter_by(guid=user_id).first()
+#         if(user):
+#             return jsonify({
+#                 'user': {
+#                     'email': user.email
+#                 }
+#             })
 
+    
+#     return jsonify({
+#         "error": "User not found"
+#     }), HTTP_400_BAD_REQUEST
 
 @auth.post('/signup')
 @validate()
-@cross_origin()
+@cross_origin(origins="*")
 def signup(body: UserModel):
     
     # data = request.json
@@ -99,9 +119,9 @@ def signup(body: UserModel):
         }
     }), HTTP_201_CREATED
 
-@auth.post("/login")
+@auth.route("/login",methods=["POST","OPTIONS"])
 @validate()
-@cross_origin()
+@cross_origin(origin="*")
 def login(body: UserLoginModel):
     email = body.email
     password = body.password
@@ -306,3 +326,8 @@ def confirm_email(email_confirmation_token:str):
             return jsonify({
                 'message': 'Email confirmed!'
             }), HTTP_200_OK
+@auth.after_request
+def after_request(response):
+    header = response.headers
+    header['Access-Control-Allow-Origin'] = '*'
+    return response
