@@ -1,33 +1,60 @@
 import json
-from os import abort, access
+import os 
 import traceback
 from flask import Blueprint, jsonify, request, redirect,url_for
 from flask import current_app
+from flask import Flask
 from itsdangerous import base64_decode
 from werkzeug.security import check_password_hash, generate_password_hash
 import validators
 from flask_jwt_extended import jwt_required, create_access_token, create_refresh_token,get_jwt_identity, get_jwt, decode_token
 from datetime import datetime as dt, timedelta,timezone
-from src.constants.http_status_codes import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
-from src.database import User as User, UserTokens
-from src.database import Accounts as Accounts
-from src.database import UserTokens as UserTokens
-from src.database import db
+from constants.http_status_codes import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
+from database import User as User, UserTokens
+from database import Accounts as Accounts
+from database import UserTokens as UserTokens
+from database import db
 import uuid
-from src.models import UserModel,UserLoginModel, UserResetPasswordModel, UserSetPasswordModel
+from models import UserModel,UserLoginModel, UserResetPasswordModel, UserSetPasswordModel
 from flask_pydantic import validate
-from flask_mail import Message
-from src.util.mail import mail
+# from flask_mail import Message
+from util.mail import mail
 # from src.util.jwt import jwt
-from src.util.cache import cache
-from src.util.token import confirm_email_confirmation_token,generate_email_confirmation_token 
+from util.cache import cache
+from util.token import confirm_email_confirmation_token,generate_email_confirmation_token 
 import random 
 import string
 import jwt
 from functools import wraps
 
-auth = Blueprint("auth",__name__,url_prefix="/api/v1/auth")
+# auth = Blueprint("auth",__name__,url_prefix="/api/v1/auth")
+DB_HOST = os.environ.get('DATABASE_HOST',"127.0.0.1")
+DB_USER = os.environ.get('DATABASE_USER',"root")
+DB_PORT = os.environ.get('DATABASE_PORT',3306)
+DATABASE = os.environ.get('DATABASE_NAME',"udify")
+DB_PASSWORD = os.environ.get('DATABASE_PASSWORD',"root")
 
+app = Flask(__name__)
+app.config.update(
+            SECRET_KEY = os.environ.get("SECRET_KEY"),
+            SQLALCHEMY_DATABASE_URI = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DATABASE}",
+            SQLALCHEMY_TRACK_MODIFICATIONS = False,
+            # SECRET_KEY=os.environ.get("JWT_SECRET_KEY"),
+            MAIL_SERVER=os.environ.get("MAIL_SERVER",""),
+            MAIL_PORT=os.environ.get("MAIL_PORT",""),
+            MAIL_USERNAME=os.environ.get("MAIL_USERNAME",""),
+            MAIL_PASSWORD=os.environ.get("MAIL_PASSWORD",""),
+            MAIL_USE_TLS=False,
+            MAIL_USE_SSL=True,
+            SECURITY_PASSWORD_SALT = os.environ.get("SECURITY_PASSWORD_SALT","1b4K11!")
+            # CACHE_TYPE='redis',
+            # CACHE_KEY_PREFIX='server1',
+            # CACHE_REDIS_HOST='localhost',
+            # CACHE_REDIS_PORT='6379',
+            # CACHE_REDIS_URL='redis://localhost:6379'
+)
+db.app = app
+db.init_app(app)
 # decorater for access_level
 def restricted(access_group):
     def decorator(func):
@@ -94,7 +121,7 @@ def is_jwt_valid(jwt_access_token):
     print(dt.fromtimestamp(exp))
     return cache.get(user_id) == None or cache.get(user_id) < dt.fromtimestamp(exp,tz=timezone.utc) 
 
-@auth.post('/signup')
+@app.post('/signup')
 @validate()
 def signup(body: UserModel):
     # data = request.json
@@ -147,7 +174,7 @@ def signup(body: UserModel):
         }
     }), HTTP_201_CREATED
 
-@auth.post("/login")
+@app.post("/login")
 @validate()
 def login(body: UserLoginModel):
     email = body.email
@@ -176,7 +203,7 @@ def login(body: UserLoginModel):
         "error": "Wrong credentials"
     }), HTTP_401_UNAUTHORIZED
 
-@auth.get("/current_user")
+@app.get("/current_user")
 # @restricted("admin")
 def current_user():
     
@@ -199,7 +226,7 @@ def current_user():
         }
     }), HTTP_200_OK
 
-@auth.get("/token/refresh")
+@app.get("/token/refresh")
 def get_refresh_token():
     identity = get_jwt_identity()
     access = create_access_token(identity=identity)
@@ -215,7 +242,7 @@ def get_refresh_token():
     }), HTTP_200_OK
 
 # Marking the token as revoked after the session is logged out, forcing the user to login again
-@auth.delete("/logout")
+@app.delete("/logout")
 def logout():
 
     access_token = request.headers.get('Authorization')
@@ -243,7 +270,7 @@ def logout():
 
 def send_mail():
     pass
-@auth.post("/reset_password")
+@app.post("/reset_password")
 @validate()
 def reset_password(body: UserResetPasswordModel):
     email = body.email
@@ -264,7 +291,7 @@ def reset_password(body: UserResetPasswordModel):
         'error': 'User not found'
     }), HTTP_404_NOT_FOUND
 
-@auth.post("/<string:password_reset_token>")
+@app.post("/<string:password_reset_token>")
 @validate()
 def password_reset_token(body: UserSetPasswordModel,password_reset_token:str):
     user = User.query.filter_by(password_reset_token=password_reset_token).first()
@@ -290,7 +317,7 @@ def password_reset_token(body: UserSetPasswordModel,password_reset_token:str):
         'error': 'User not found'
     }), HTTP_404_NOT_FOUND
 
-@auth.get("/confirm/<string:email_confirmation_token>")
+@app.get("/confirm/<string:email_confirmation_token>")
 @validate()
 def confirm_email(email_confirmation_token:str):
     try: 
@@ -315,3 +342,7 @@ def confirm_email(email_confirmation_token:str):
             return jsonify({
                 'message': 'Email confirmed!'
             }), HTTP_200_OK
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
