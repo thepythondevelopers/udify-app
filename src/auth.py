@@ -185,10 +185,10 @@ def current_user():
             "error":"Invalid Token"
         }), HTTP_401_UNAUTHORIZED
     
-    if(is_jwt_valid(request.headers.get('Authorization').split(" ")[1]) ==  False):
-        return jsonify({
-            "error": "Invalid Token"
-        }), HTTP_401_UNAUTHORIZED
+    # if(is_jwt_valid(request.headers.get('Authorization').split(" ")[1]) ==  False):
+    #     return jsonify({
+    #         "error": "Invalid Token"
+    #     }), HTTP_401_UNAUTHORIZED
     
     user_id = jwt.decode(request.headers.get('Authorization').split(' ')[1],key=current_app.config["SECRET_KEY"],algorithms="HS256")['user_id']
     user = User.query.filter_by(guid=user_id).first()
@@ -234,8 +234,8 @@ def logout():
     print(type(exp_time))
     jwt_exp_time = dt.now(timezone.utc) + timedelta(minutes=15)
     print(jwt_exp_time)
-    cache.set(jwt_payload['user_id'],jwt_exp_time)
-    print(cache.get(jwt_payload['user_id']))
+    # cache.set(jwt_payload['user_id'],jwt_exp_time)
+    # print(cache.get(jwt_payload['user_id']))
     return jsonify({
         'msg':f"User {jwt_payload['user_id']} logged out"
     }), HTTP_200_OK
