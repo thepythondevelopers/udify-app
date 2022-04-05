@@ -10,7 +10,5 @@ RUN apt-get install -y \
 RUN pip install -U pip
 RUN pip install -r /tmp/requirements.txt
 
-WORKDIR ./src
-COPY ./src /src
-
-CMD ["python3", "-m","flask", "run", "--host=0.0.0.0"]
+WORKDIR ./app
+COPY ./app /app
