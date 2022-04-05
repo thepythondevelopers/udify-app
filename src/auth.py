@@ -257,7 +257,7 @@ def logout():
 
 def send_mail():
     pass
-@auth.post("/reset_password")
+@auth.post("/forgot_password")
 @validate()
 # @cross_origin()
 def reset_password(body: UserResetPasswordModel):
@@ -273,13 +273,13 @@ def reset_password(body: UserResetPasswordModel):
         # message.body = "Hello,\nWe've received a request to reset your password. If you want to reset your password, click the link below and enter your new password\n http://127.0.0.1:5000/api/v1/auth/" + user.password_reset_token
         # mail.send(message)
         return jsonify({
-            "message": f"Password reset token sent on email,http://127.0.0.1:5000/api/v1/auth/{user.password_reset_token}"
+            "message": f"Password reset token sent on email,http://127.0.0.1:5000/api/v1/auth/reset_password_token/{user.password_reset_token}"
         }), HTTP_200_OK
     return jsonify({
         'error': 'User not found'
     }), HTTP_404_NOT_FOUND
 
-@auth.post("/<string:password_reset_token>")
+@auth.post("/reset_password_token/<string:password_reset_token>")
 @validate()
 # @cross_origin()
 def password_reset_token(body: UserSetPasswordModel,password_reset_token:str):
