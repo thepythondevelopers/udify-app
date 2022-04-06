@@ -49,9 +49,12 @@ app.config.update(
             SECURITY_PASSWORD_SALT = os.environ.get("SECURITY_PASSWORD_SALT","1b4K11!"),
             CACHE_TYPE='redis',
             CACHE_KEY_PREFIX='server1',
-            CACHE_REDIS_HOST='localhost',
-            CACHE_REDIS_PORT='6379',
-            CACHE_REDIS_URL='redis://localhost:6379'
+            CACHE_REDIS_HOST=' http://udify-redis-do-user-4912141-0.b.db.ondigitalocean.com',
+            # f'redis://:{CACHE_REDIS_PASS}@{CACHE_REDIS_HOST}:{CACHE_REDIS_PORT}
+            CACHE_REDIS_PORT='25061',
+            CACHE_REDIS_URL=f'rediss://default:AVNS_H1ldRswWtOxMWL-@udify-redis-do-user-4912141-0.b.db.ondigitalocean.com:25061',
+            # CACHE_REDIS_PASSWORD='AVNS_H1ldRswWtOxMWL-'
+            
 )
 db.app = app
 db.init_app(app)
