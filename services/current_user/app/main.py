@@ -1,11 +1,11 @@
-from flask import Flask,jsonify, current_app
+from flask import Flask,jsonify, current_app, request
 import os 
 import json
 from werkzeug.security import check_password_hash
 from flask_pydantic import validate
 from database import db,User,Accounts
 from flask_caching import Cache
-from pydantic_models import UserLoginModel
+# from pydantic_models import UserLoginModel
 from datetime import datetime as dt, timedelta,timezone
 from constants.http_status_codes import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 import validators
@@ -95,33 +95,29 @@ def is_jwt_valid(jwt_access_token):
 
 
 @app.route("/", methods=["POST"])
-@validate()
-def login(body: UserLoginModel):
-    email = body.email
-    password = body.password
-
-    user=User.query.filter_by(email=email).first()
-
-    if user: 
-        is_pass_correct = check_password_hash(user.password,password)
-        if is_pass_correct:
-            access_expiry_value = dt.now(timezone.utc) + timedelta(minutes=15)
-            refresh_expiry_value = dt.now(timezone.utc) + timedelta(days=1)
-            # create_access_token
-            access_token = jwt.encode({'exp':access_expiry_value,'user_id':user.guid,'role':user.access_group},key=current_app.config["SECRET_KEY"],algorithm="HS256")
-            print(f"Access Token expiry date: {str(access_expiry_value)}")
-            refresh_token = jwt.encode({'exp':refresh_expiry_value,'user_id': user.guid},key=current_app.config["SECRET_KEY"],algorithm="HS256")
-            return jsonify({
-                'user':{
-                    'refresh_token': refresh_token,
-                    'access_token': access_token,
-                    'email': user.email
-                }
-            }), HTTP_200_OK
+def current_user():
+    if(request.headers.get('Authorization') == None):
+        return jsonify({
+            "error": "Authentication Token missing"
+        }),HTTP_401_UNAUTHORIZED
+    if(is_jwt_authorized(request.headers.get('Authorization')) == False):
+        return jsonify({
+            "error":"Invalid Token"
+        }), HTTP_401_UNAUTHORIZED
     
+    if(is_jwt_valid(request.headers.get('Authorization').split(" ")[1]) ==  False):
+        return jsonify({
+            "error": "Invalid Token"
+        }), HTTP_401_UNAUTHORIZED
+    
+    user_id = jwt.decode(request.headers.get('Authorization').split(' ')[1],key=current_app.config["SECRET_KEY"],algorithms="HS256")['user_id']
+    user = User.query.filter_by(guid=user_id).first()
+    # return {"user":"protected information"}
     return jsonify({
-        "error": "Wrong credentials"
-    }), HTTP_401_UNAUTHORIZED
+        "user": {
+            "email": user.email
+        }
+    }), HTTP_200_OK
 
 
 if __name__ == "__main__":
