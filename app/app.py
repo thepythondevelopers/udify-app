@@ -50,7 +50,6 @@ app.config.update(
             CACHE_TYPE='redis',
             CACHE_KEY_PREFIX='server1',
             CACHE_REDIS_HOST=' http://udify-redis-do-user-4912141-0.b.db.ondigitalocean.com',
-            # f'redis://:{CACHE_REDIS_PASS}@{CACHE_REDIS_HOST}:{CACHE_REDIS_PORT}
             CACHE_REDIS_PORT='25061',
             CACHE_REDIS_URL=f'rediss://default:AVNS_H1ldRswWtOxMWL-@udify-redis-do-user-4912141-0.b.db.ondigitalocean.com:25061',
             # CACHE_REDIS_PASSWORD='AVNS_H1ldRswWtOxMWL-'
