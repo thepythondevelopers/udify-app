@@ -12,11 +12,11 @@ import validators
 from itsdangerous import base64_decode
 import jwt
 
-DB_HOST = os.environ.get('DATABASE_HOST',"127.0.0.1")
-DB_USER = os.environ.get('DATABASE_USER',"root")
+DB_HOST = os.environ.get('DATABASE_HOST',"test-db.clbwo2sv0u1y.eu-west-1.rds.amazonaws.com")
+DB_USER = os.environ.get('DATABASE_USER',"admin")
 DB_PORT = os.environ.get('DATABASE_PORT',3306)
 DATABASE = os.environ.get('DATABASE_NAME',"udify")
-DB_PASSWORD = os.environ.get('DATABASE_PASSWORD',"root")
+DB_PASSWORD = os.environ.get('DATABASE_PASSWORD',"admin1234")
 cache = Cache()
 
 app = Flask(__name__)

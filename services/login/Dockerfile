@@ -9,12 +9,14 @@ WORKDIR /app
 
 # Copy the dependencies file to the working directory
 COPY requirements.txt .
+RUN apk add libffi-dev
+RUN apk add gcc musl-dev python3-dev libffi-dev openssl-dev cargo
 
 # Install any dependencies
 RUN pip install -r requirements.txt
 
 # Copy the content of the local src directory to the working directory
-COPY app.py .
+COPY ./app /app
 
 # Specify the command to run on container start
 CMD [ "python", "./app.py" ]
