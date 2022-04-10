@@ -1,14 +1,20 @@
-FROM tiangolo/uwsgi-nginx-flask:python3.8
+# Set base image (host OS)
+FROM python:3.8-alpine
 
-# copy over our requirements.txt file
-COPY requirements.txt /tmp/
+# By default, listen on port 5000
+EXPOSE 5000/tcp
 
-# upgrade pip and install required python packages
-RUN apt-get update
-RUN apt-get install -y \
-  libev-dev
-RUN pip install -U pip
-RUN pip install -r /tmp/requirements.txt
+# Set the working directory in the container
+WORKDIR /app
 
-WORKDIR ./app
-COPY ./app /app
+# Copy the dependencies file to the working directory
+COPY requirements.txt .
+
+# Install any dependencies
+RUN pip install -r requirements.txt
+
+# Copy the content of the local src directory to the working directory
+COPY app.py .
+
+# Specify the command to run on container start
+CMD [ "python", "./app.py" ]
