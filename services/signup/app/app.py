@@ -5,6 +5,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from flask_pydantic import validate
 from database import db,User,Accounts
 from flask_caching import Cache
+from flask_cors import CORS, cross_origin
 from pydantic_models import UserModel
 from constants.http_status_codes import HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_409_CONFLICT
 import validators
@@ -43,7 +44,7 @@ app.config.update(
 db.app = app
 db.init_app(app)
 cache.init_app(app)
-
+cors = CORS(app)
 def generate_email_confirmation_token(email):
 
     serilalizer = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
@@ -52,6 +53,7 @@ def generate_email_confirmation_token(email):
 
 
 @app.route("/", methods=["POST"])
+@cross_origin()
 @validate()
 def signup(body: UserModel):
     first_name = body.first_name
@@ -106,3 +108,6 @@ def signup(body: UserModel):
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', debug=True,port=5000)
+
+
+

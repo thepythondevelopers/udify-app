@@ -1,8 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
 
-
-
 # Pydantic Models for input validation 
 class UserModel(BaseModel):
     first_name : str 

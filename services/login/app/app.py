@@ -1,3 +1,4 @@
+from audioop import cross
 from flask import Flask,jsonify, current_app
 import os 
 import json
@@ -5,6 +6,7 @@ from werkzeug.security import check_password_hash
 from flask_pydantic import validate
 from database import db,User,Accounts
 from flask_caching import Cache
+from flask_cors import CORS, cross_origin
 from pydantic_models import UserLoginModel
 from datetime import datetime as dt, timedelta,timezone
 from constants.http_status_codes import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
@@ -43,6 +45,7 @@ app.config.update(
 db.app = app
 db.init_app(app)
 cache.init_app(app)
+cors = CORS(app)
 
 def is_jwt_authorized(jwt_access_token):
     '''
@@ -95,6 +98,7 @@ def is_jwt_valid(jwt_access_token):
 
 
 @app.route("/", methods=["POST"])
+@cross_origin()
 @validate()
 def login(body: UserLoginModel):
     email = body.email
@@ -126,3 +130,8 @@ def login(body: UserLoginModel):
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', debug=True,port=5000)
+
+
+
+
+

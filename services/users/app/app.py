@@ -10,13 +10,14 @@ from datetime import datetime as dt, timedelta,timezone
 from constants.http_status_codes import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 import validators
 from itsdangerous import base64_decode
+from flask_cors import CORS, cross_origin
 import jwt
 
-DB_HOST = os.environ.get('DATABASE_HOST',"127.0.0.1")
-DB_USER = os.environ.get('DATABASE_USER',"root")
+DB_HOST = os.environ.get('DATABASE_HOST',"test-db.clbwo2sv0u1y.eu-west-1.rds.amazonaws.com")
+DB_USER = os.environ.get('DATABASE_USER',"admin")
 DB_PORT = os.environ.get('DATABASE_PORT',3306)
 DATABASE = os.environ.get('DATABASE_NAME',"udify")
-DB_PASSWORD = os.environ.get('DATABASE_PASSWORD',"root")
+DB_PASSWORD = os.environ.get('DATABASE_PASSWORD',"admin1234")
 cache = Cache()
 
 app = Flask(__name__)
@@ -37,12 +38,14 @@ app.config.update(
             CACHE_REDIS_HOST=' http://udify-redis-do-user-4912141-0.b.db.ondigitalocean.com',
             CACHE_REDIS_PORT='25061',
             CACHE_REDIS_URL=f'rediss://default:AVNS_H1ldRswWtOxMWL-@udify-redis-do-user-4912141-0.b.db.ondigitalocean.com:25061',
+            CORS_HEADERS='Content-Type'
             # CACHE_REDIS_PASSWORD='AVNS_H1ldRswWtOxMWL-'            
 )
 
 db.app = app
 db.init_app(app)
 cache.init_app(app)
+cors = CORS(app)
 
 def is_jwt_authorized(jwt_access_token):
     '''
@@ -94,7 +97,7 @@ def is_jwt_valid(jwt_access_token):
     return cache.get(user_id) == None or cache.get(user_id) < dt.fromtimestamp(exp,tz=timezone.utc) 
 
 
-@app.route("/", methods=["POST"])
+@app.route("/current_user", methods=["POST"])
 def current_user():
     if(request.headers.get('Authorization') == None):
         return jsonify({
@@ -118,6 +121,77 @@ def current_user():
             "email": user.email
         }
     }), HTTP_200_OK
+
+
+#API Key Required
+@app.route("/users/<string:user_id>", methods=["GET"])
+def get_user(user_id:str):
+    
+
+    if(request.headers.get('X-Api-Key') == False):
+        
+        return jsonify({
+            "error": "Authentication Token missing"
+        }),HTTP_401_UNAUTHORIZED
+    
+    api_key = request.headers.get('X-Api-Key')
+    if(api_key!= os.environ.get("API_Key","3e7e4cce3ebf4f1289950e0bdecbffe0")):
+        return jsonify({
+            "error": "Authentication Token missing"
+        }),HTTP_401_UNAUTHORIZED
+
+    user = User.query.filter_by(guid=user_id).first()
+
+    if user: 
+        
+        user_object = {
+            'first_name': user.first_name,
+            'last_name': user.last_name, 
+            'email': user.email,
+            # 'phone': user.phone,
+            'access_group': user.access_group
+            # 'plan_status':user.plan_status
+        }
+
+        # message = Message('Confirm Password Change', sender = 'test', recipients = [email])
+        # message.body = "Hello,\nWe've received a request to reset your password. If you want to reset your password, click the link below and enter your new password\n http://127.0.0.1:5000/api/v1/auth/" + user.password_reset_token
+        # mail.send(message)
+        return jsonify({
+            'user': user_object
+        }), HTTP_200_OK
+    return jsonify({
+        'error': 'User not found'
+    }), HTTP_404_NOT_FOUND
+
+
+@app.route("/users/<string:user_id>",methods=["PUT"])
+def update_user(user_id: str):
+    if(request.headers.get('X-Api-Key') == False):
+    
+        return jsonify({
+            "error": "Authentication Token missing"
+        }),HTTP_401_UNAUTHORIZED
+    
+    api_key = request.headers.get('X-Api-Key')
+    
+    if(api_key!= os.environ.get("API_Key","3e7e4cce3ebf4f1289950e0bdecbffe0")):
+        return jsonify({
+            "error": "Authentication Token missing"
+        }),HTTP_401_UNAUTHORIZED
+
+    user = User.query.filter_by(guid=user_id).first()
+
+    # if user: 
+        
+    #     for 
+
+    #             return jsonify({
+    #         'user': user_object
+    #     }), HTTP_200_OK
+    # return jsonify({
+    #     'error': 'User not found'
+    # }), HTTP_404_NOT_FOUND
+
 
 
 if __name__ == "__main__":
