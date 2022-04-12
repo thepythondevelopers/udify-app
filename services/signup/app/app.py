@@ -102,7 +102,8 @@ def signup(body: UserModel):
         "user": {
             "email": email,
             "first_name": first_name
-        }
+        },
+        "account": accid
     }), HTTP_201_CREATED 
 
 

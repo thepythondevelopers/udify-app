@@ -119,7 +119,8 @@ def login(body: UserLoginModel):
                 'user':{
                     'refresh_token': refresh_token,
                     'access_token': access_token,
-                    'email': user.email
+                    'email': user.email,
+                    'account_id':user.account_id
                 }
             }), HTTP_200_OK
     

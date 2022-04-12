@@ -1,6 +1,6 @@
 {
     "flask": {
-        "image": ":login-service.login-container.5",
+        "image": ":login-service.login-container.8",
         "ports": {
             "5000": "HTTP"
         }
